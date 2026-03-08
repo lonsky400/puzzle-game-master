@@ -360,9 +360,7 @@ function PuzzleBoardInner({ engine, imageUrl, showNumbers, onMove, onWin }: Puzz
         selectedPosRef.current = -1;
       } else {
         selectedPosRef.current = clickedPos;
-        const selPositions = engine.uf.getGroupMembers(engine.getPieceAtPos(clickedPos)).map((id: number) => engine.getPiece(id).currentPos);
-        popGroupPositionsRef.current = new Set(selPositions);
-        selectionPopStartTimeRef.current = Date.now();
+        // 不在此处再次触发 pop：按下时已触发一次，松开不再二次闪动
       }
     }
 
