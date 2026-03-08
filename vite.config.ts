@@ -163,7 +163,7 @@ export default defineConfig({
   },
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
-  base: "/puzzle-game/", // GitHub Pages 子路径
+  base: "/puzzle-game-master/", // GitHub Pages 项目站子路径
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

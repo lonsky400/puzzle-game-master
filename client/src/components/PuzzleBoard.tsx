@@ -131,7 +131,7 @@ function PuzzleBoardInner({ engine, imageUrl, showNumbers, onMove, onWin }: Puzz
     };
   }, [getCanvasSize]);
 
-  // 加载图片
+  // 加载图片；失败时用占位图并标记已加载，避免移动端一直卡在「画卷展开中」或触发异常
   useEffect(() => {
     setImageLoaded(false);
     setImageSize(null);
@@ -148,6 +148,16 @@ function PuzzleBoardInner({ engine, imageUrl, showNumbers, onMove, onWin }: Puzz
         imageRef.current = img2;
         setImageSize(img2.naturalWidth ? { w: img2.naturalWidth, h: img2.naturalHeight } : null);
         setImageLoaded(true);
+      };
+      img2.onerror = () => {
+        // 两次都失败时用 1x1 占位，避免 draw 里 img 为 null 导致崩溃
+        const placeholder = new Image();
+        placeholder.onload = () => {
+          imageRef.current = placeholder;
+          setImageSize({ w: 1, h: 1 });
+          setImageLoaded(true);
+        };
+        placeholder.src = 'data:image/gif;base64,R0lGOODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
       };
       img2.src = imageUrl;
     };
@@ -498,7 +508,10 @@ function PuzzleBoardInner({ engine, imageUrl, showNumbers, onMove, onWin }: Puzz
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    // 移动端限制 DPR 以降低 canvas 内存，避免 OOM 导致页面被系统关闭
+    const rawDpr = window.devicePixelRatio || 1;
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|Mobile/i.test(navigator.userAgent);
+    const dpr = isMobile ? Math.min(rawDpr, 2) : rawDpr;
     const { boardWidth, boardHeight, gap, cellWidth, cellHeight, gridSize, colEdges, rowEdges } = layout;
 
     if (canvas.width !== Math.round(boardWidth * dpr) || canvas.height !== Math.round(boardHeight * dpr)) {
@@ -885,7 +898,9 @@ function PuzzleBoardInner({ engine, imageUrl, showNumbers, onMove, onWin }: Puzz
     const ctx = overlay.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    const rawDpr = window.devicePixelRatio || 1;
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|Mobile/i.test(navigator.userAgent);
+    const dpr = isMobile ? Math.min(rawDpr, 2) : rawDpr;
     const rect = overlay.getBoundingClientRect();
     if (overlay.width !== Math.round(rect.width * dpr) || overlay.height !== Math.round(rect.height * dpr)) {
       overlay.width = Math.round(rect.width * dpr);
@@ -983,11 +998,15 @@ function PuzzleBoardInner({ engine, imageUrl, showNumbers, onMove, onWin }: Puzz
     }
   }, [layout, engine, imageLoaded, showNumbers]);
 
-  // 动画循环（棋盘 + 全屏拖拽层）
+  // 动画循环（棋盘 + 全屏拖拽层）；try-catch 防止单帧错误导致移动端整页崩溃
   useEffect(() => {
     const animate = () => {
-      draw();
-      drawDragOverlay();
+      try {
+        draw();
+        drawDragOverlay();
+      } catch (err) {
+        console.error('[PuzzleBoard] draw error', err);
+      }
       rafRef.current = requestAnimationFrame(animate);
     };
     rafRef.current = requestAnimationFrame(animate);

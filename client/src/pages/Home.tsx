@@ -28,6 +28,8 @@ import {
   setStarForLevel,
   type StarsMap,
 } from '@/lib/progressStorage';
+import { startAllBgm, stopAllBgm, resumeAndStartAllBgm } from '@/lib/allBgm';
+import { startBgm, stopBgm } from '@/lib/puzzleBgm';
 
 const BG_URL =
   'https://d2xsxph8kpxj0f.cloudfront.net/310419663028373717/gXcdKD4ijsoo6c6S8DJhhB/puzzle-bg-9orue8KtPNBbe5YaNbq2Xw.webp';
@@ -68,20 +70,53 @@ export default function Home() {
 
   useEffect(() => {
     if (gameState === 'playing') {
+      stopAllBgm();
       setElapsedTime(0);
       timerRef.current = setInterval(() => setElapsedTime((t) => t + 1), 1000);
+      // 若进入时 BGM 未播（如解码未完成），首次触摸再试一次
+      const onFirstInteraction = () => {
+        startBgm();
+        document.removeEventListener('click', onFirstInteraction);
+        document.removeEventListener('touchstart', onFirstInteraction);
+      };
+      document.addEventListener('click', onFirstInteraction, { once: true });
+      document.addEventListener('touchstart', onFirstInteraction, { once: true });
+      return () => {
+        document.removeEventListener('click', onFirstInteraction);
+        document.removeEventListener('touchstart', onFirstInteraction);
+      };
     } else {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+      stopBgm();
+      // 背景音乐必须在用户点击后才能播放（浏览器策略），仅注册首次点击时再试
+      const onFirstInteraction = () => {
+        resumeAndStartAllBgm().catch(() => {});
+        document.removeEventListener('click', onFirstInteraction);
+        document.removeEventListener('touchstart', onFirstInteraction);
+      };
+      document.addEventListener('click', onFirstInteraction, { once: true });
+      document.addEventListener('touchstart', onFirstInteraction, { once: true });
+      return () => {
+        document.removeEventListener('click', onFirstInteraction);
+        document.removeEventListener('touchstart', onFirstInteraction);
+      };
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
   }, [gameState]);
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      stopBgm();
+      stopAllBgm();
+    };
+  }, []);
+
   const startGame = useCallback((level: LevelInfo) => {
+    // 必须在用户点击的同一事件链里最先启动 BGM，否则会被自动播放策略拦截
+    startBgm().catch(() => {});
     setCurrentLevel(level);
     setEngine(new PuzzleEngine(level.gridSize));
     setMoveCount(0);
@@ -114,6 +149,7 @@ export default function Home() {
 
   const handleRestart = useCallback(() => {
     if (!currentLevel) return;
+    startBgm();
     setEngine(new PuzzleEngine(currentLevel.gridSize));
     setMoveCount(0);
     setElapsedTime(0);
