@@ -41,6 +41,11 @@ jobs:
       - name: List build output (for debugging)
         run: ls -la dist/public/
 
+      - name: Verify BGM files in build
+        run: |
+          test -f dist/public/bgm.mp3 && echo "✓ bgm.mp3 present" || (echo "✗ bgm.mp3 missing"; exit 1)
+          test -f dist/public/all-bgm.mp3 && echo "✓ all-bgm.mp3 present" || (echo "✗ all-bgm.mp3 missing"; exit 1)
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@3
         with:
