@@ -50,8 +50,8 @@ jobs:
           test -f dist/public/all-bgm.mp3 && echo "✓ all-bgm.mp3 present" || (echo "✗ all-bgm.mp3 missing"; exit 1)
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
+uses: actions/upload-pages-artifact@v4
+with:
           path: dist/public
 
   deploy:
